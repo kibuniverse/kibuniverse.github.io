@@ -1,9 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
-    <title>hello-gexo</title>
-    <url>/2021/01/02/hello-gexo/</url>
-    <content><![CDATA[]]></content>
+    <title>从执行环境开始深入理解闭包</title>
+    <url>/2021/01/02/%E4%BB%8E%E6%89%A7%E8%A1%8C%E7%8E%AF%E5%A2%83%E5%BC%80%E5%A7%8B%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3%E9%97%AD%E5%8C%85/</url>
+    <content><![CDATA[<h1 id="从执行环境及作用域开始深入理解闭包及其原因"><a href="#从执行环境及作用域开始深入理解闭包及其原因" class="headerlink" title="从执行环境及作用域开始深入理解闭包及其原因"></a>从执行环境及作用域开始深入理解闭包及其原因</h1><blockquote>
+<p>对闭包的概念总是有种一知半解的感觉，结合<code>JavaScpript高级程序设计</code>第四章和第七章后发现对闭包有了一定的理解。</p>
+</blockquote>
+<h2 id="执行环境"><a href="#执行环境" class="headerlink" title="执行环境"></a>执行环境</h2><p>执行环境是<code>JavaScript</code>中最为重要的一个概念。执行环境定义了变量或函数有权访问的其他数据，决定了它们各自的行为。每个执行环境都有一个与之关联的<strong>变量对象</strong>，也就是我们通常所说的<code>vo</code>，环境中定义的所有变量和函数都保存在这个对象中。虽然我们编写的代码无法访问这个对象，但解析器在处理数据时会在后台使用它。</p>
+<p>而每个函数都有自己的<strong>执行环境</strong>。当执行流进入一个函数时，函数的环境就会被推入一个环境栈中。而在环境执行之后，栈将其环境弹出，然后将控制权返回给之前的执行环境。所以通过执行流不断的进出执行环境就实现了代码环境</p>
+<p>某个执行环境中所有的代码执行完毕后，该环境会被销毁，对应的保存其中的所有变量和函数定义也会被销毁。但全局执行环境只用应用程序退出，比如关闭网页或者浏览器时才会被销毁。</p>
+<h2 id="作用域链"><a href="#作用域链" class="headerlink" title="作用域链"></a>作用域链</h2><p>因为每个函数都有自己的执行环境，所以当代码在一个环境中执行时，会创建<strong>变量对象</strong>的一个<strong>作用域链</strong>。作用域链的用途是保证对执行环境有权访问的所有变量和函数的由于访问，即在某个执行环境中的代码想要访问某个变量或者函数的时候，引擎就会在其作用域链中寻找改变量或者函数，若未找到，则报错<code>xxx is not defined </code>。</p>
+<h4 id="那么作用域链是什么样子呢？"><a href="#那么作用域链是什么样子呢？" class="headerlink" title="那么作用域链是什么样子呢？"></a>那么作用域链是什么样子呢？</h4><p>作用域链的前端，始终都是当前执行的代码所在的环境的变量对象。如果这个环境是函数，则将其<strong>活动对象</strong>作为变量对象。活动对象在最开始时只包含一个变量，即参数<code>arguement</code>对象，不过这个对象在全局环境中是不存在的。作用域链中的下一个对象来自于外部的包含环境，而再下一个变量对象则来自其<strong>包含环境的包含环境</strong>，一直延续到全局执行环境。</p>
+<p><strong>全局执行环境的变量对象始终都是任何一个执行环境的作用域链中最后一个对象</strong></p>
+<p>举个例子</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="keyword">var</span> name = <span class="string">&#x27;Jerry&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">getName</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">    <span class="keyword">var</span> newName = <span class="string">&#x27;Tom&#x27;</span></span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">function</span> <span class="title">changeName</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">        <span class="keyword">var</span> tempName = name</span><br><span class="line">        name = newName</span><br><span class="line">        newName = tempName</span><br><span class="line">    &#125;</span><br><span class="line">   </span><br><span class="line">    changeName()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">getName()</span><br></pre></td></tr></table></figure>
+<p>上面的代码一共涉及了3个执行环境</p>
+<ul>
+<li>全局环境</li>
+<li><code>getName</code>的局部环境</li>
+<li><code>changeName</code>的局部环境</li>
+</ul>
+<h5 id="全局环境"><a href="#全局环境" class="headerlink" title="全局环境"></a>全局环境</h5><p>全局环境中有一个变量<code>name</code>和一个函数<code>getName()</code></p>
+<p>所以在全局执行环境中的代码可以直接使用<code>name</code>变量和<code>getName</code>函数</p>
+<h5 id="getName局部环境"><a href="#getName局部环境" class="headerlink" title="getName局部环境"></a><code>getName</code>局部环境</h5><p><code>getName</code>局部环境的<strong>活动对象</strong>中有一个名为<code>newName</code>的变量和<code>changeName</code>的函数</p>
+<p>由于全局环境是它的父执行环境，所以该执行环境可以使用的变量</p>
+<ul>
+<li><code>newName</code></li>
+<li><code>changeName</code></li>
+<li><code>name</code></li>
+</ul>
+<h5 id="changeName局部环境"><a href="#changeName局部环境" class="headerlink" title="changeName局部环境"></a><code>changeName</code>局部环境</h5><p><code>changeName</code>局部环境<strong>活动对象</strong>中有一个名为<code>tempName</code>的变量和<code>changeName</code>的函数</p>
+<p>由于全局环境是和<code>getName</code>局部环境是他的包含环境，所以该执行环境可以使用的变量</p>
+<ul>
+<li><code>tempName</code></li>
+<li><code>newName</code></li>
+<li><code>name</code></li>
+</ul>
+<p><img src="https://www.cloudykz.top/files/6f7177bffa0fe1babd7336fb01d331f6.png"></p>
+<p>上图展示了代码的执行环境。其中，内部环境可以通过作用域链访问所有的外部环境，但外部环境不能访问内部环境中的任何变量或者函数。</p>
+<p>对于这个例子中的<code>changeName()</code>而言，其执行环境的作用域包含3个对象，分别为：</p>
+<ul>
+<li><code>changeName()</code>的变量对象</li>
+<li><code>getName()</code>的变量对象</li>
+<li>全局变量对象</li>
+</ul>
+<p>个人觉得有点类似于原型链的寻找变量方法，这里贴出一篇我总结的原型链相关的链接: <a href="https://blog.csdn.net/weixin_43990363/article/details/100408950">原型链详细图解</a></p>
+<p>还有可以延长作用域链的方法，但由于不属于文章重点，这里就不过多赘述</p>
+<p>在上面我们已经了解了函数执行时执行流如何工作，需要注意的一点是<strong>某个执行环境中所有的代码执行完毕后，该环境会被销毁，对应的保存其中的所有变量和函数定义也会被销毁。</strong>这个对下面的理解闭包会有一定的帮助</p>
+<h2 id="闭包"><a href="#闭包" class="headerlink" title="闭包"></a>闭包</h2><blockquote>
+<p>闭包是指有权访问另一个函数作用域中的变量的函数</p>
+</blockquote>
+<p>通过上面的执行环境和作用域的介绍，可以发现如果一个执行环境要想访问非自身<strong>活动对象</strong>的变量或者函数，只能通过其包含环境去寻找，所以创建闭包的常见方式就是在一个函数内部创建另一个函数。</p>
+<p>举个例子：</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">A</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">    <span class="keyword">var</span> name = <span class="string">&#x27;Jerry&#x27;</span></span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">function</span> <span class="title">B</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">        <span class="keyword">var</span> newName = name</span><br><span class="line">        <span class="keyword">return</span> newName</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> B</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> temp = A()</span><br><span class="line"><span class="keyword">var</span> res = temp()</span><br></pre></td></tr></table></figure>
+<p>在这个例子中，<code>B()</code>被返回了，但是在外部仍然可以访问变量<code>name</code>。之所以还能访问这个变量，是因为<code>b()</code>的<strong>作用域链</strong>中包含了<code>A()</code>的作用域。</p>
+<p>但是我们在介绍执行环境和作用域的时候说到：</p>
+<p><strong>某个执行环境中所有的代码执行完毕后，该环境会被销毁，对应的保存其中的所有变量和函数定义也会被销毁。</strong></p>
+<p>为什么<code>A()</code>执行完之后没有将内部保存的所有变量和函数定义销毁呢？</p>
+<p>一般来讲，当一个函数执行完毕后，局部活动对象就会被销毁，内存中仅保存全局作用域，但是闭包的情况比较特殊，在<code>A()</code>中定义的<code>B()</code>的作用域链中会包含<code>A()</code>的活动对象。</p>
+<p>下图为<code>temp()</code>函数执行过程中产生的作用域链之间的关系</p>
+<p><img src="https://www.cloudykz.top/files/60a0f6559742f2395975284ab3b32b4e.png"></p>
+<p>在<code>B()</code>在<code>A()</code>函数中被返回后，它的作用域链被初始化为包含<code>A()</code>函数的<strong>活动对象</strong>和<strong>全局变量对象</strong>。这样，接受<code>B()</code>的<code>temp</code>就可以访问<code>A()</code>中定义的所有变量。此外，在<code>A()</code>执行完成之后，其活动对象也不会被销毁，因为<code>B()</code>的作用域链仍然在引用这个活动对象。即当<code>A()</code>函数返回后，其执行环境的作用域链会被销毁，但它的活动对象仍然会留在内存中，直到<code>B()</code>被销毁，<code>A()</code>的活动对象才会被销毁。</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line">temp = <span class="literal">null</span> </span><br></pre></td></tr></table></figure>
+<p>下面的代码即可解除对<code>B()</code>的引用</p>
+<h3 id="闭包经典例子"><a href="#闭包经典例子" class="headerlink" title="闭包经典例子"></a>闭包经典例子</h3><figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">createFunctions</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">    <span class="keyword">var</span> result = <span class="keyword">new</span> <span class="built_in">Array</span>()</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">var</span> i = <span class="number">0</span>; i &lt; <span class="number">10</span>; i++) &#123;</span><br><span class="line">        result[i] = <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">            <span class="keyword">return</span> i;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> result</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>乍一看这段代码返回的函数数组中的每个函数都应该返回自己的索引值，即result[0] (） = 0. result[1] () = 1 ，但实际上每个函数都返回的是 10</p>
+<p>解释： </p>
+<p>按照我们上面说的，实际上<code>result</code>数组中每一个元素都是一个闭包函数，因为其都引用了<code>createFunctions</code>的活动对象中的 <code>i</code>，并且数组中的每一个函数都引用的时同一个变量<code>i</code>, 当<code>createFunctions</code>返回后，变量<code>i</code>的值已经变为了 10, 所以 在每个函数内部 i 的值都是10, 那么如何解决呢，我们只需要将<code>i</code>的值从<code>createFunctions</code>的活动对象添加到每一个函数的活动对象中，方法使用传参即可</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">createFunctions</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">    <span class="keyword">var</span> result = <span class="keyword">new</span> <span class="built_in">Array</span>()</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">var</span> i = <span class="number">0</span>; i &lt; <span class="number">10</span>; i++) &#123;</span><br><span class="line">        result[i] = <span class="function"><span class="keyword">function</span>(<span class="params">num</span>) </span>&#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">                <span class="keyword">return</span> num</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;(i)</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> result</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<h3 id="最后"><a href="#最后" class="headerlink" title="最后"></a>最后</h3><p>闭包在我平常的编程中基本没有可以用到过去实习特定场景需求，但是为了防止以后编程中不小心出现闭包的情况，还是有必要了解一下闭包的，并且由于闭包会携带其包含它的函数的作用域，因此会比其他函数占用更多的内存，特别是如果函数嵌套层级过深则会更加耗费内存。</p>
+]]></content>
+      <categories>
+        <category>js基础</category>
+      </categories>
+      <tags>
+        <tag>js</tag>
+      </tags>
   </entry>
   <entry>
     <title>Hello World</title>
